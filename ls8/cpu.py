@@ -20,7 +20,7 @@ class CPU:
     def ram_write(self, index, value):
         self.ram[index] = value
 
-    def HLT(self):
+    def HLT(self): #HALT
         self.running = False
         self.pc += 1
 
@@ -77,17 +77,22 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
+
         while self.running:
             instruction = self.ram_read(self.pc)
+
             if instruction == 0b10000010: # LDI R0,8, store a value in a register
                 register_info = self.ram_read(self.pc + 1)
                 value = self.ram_read(self.pc + 2)
                 self.registers[register_info] = value
                 self.pc += 3
-            elif instruction == 0b01000111: # PRN R0
+
+            elif instruction == 0b01000111: # PRN R0, print register
                 register_info = self.ram_read(self.pc + 1)
                 print(self.registers[register_info])
                 self.pc += 2
+
             elif instruction == 0b00000001: # HLT, HALT
                 self.running = False
+                self.pc += 1
 
