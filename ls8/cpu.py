@@ -2,12 +2,27 @@
 
 import sys
 
+HLT = 0b00000001
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.ram = [0] * 256 
+        self.registers = [0] * 8
+        self.pc = 0
+        self.running = True
+
+    def ram_read(self, index):
+        return self.ram[index]
+
+    def ram_write(self, index, value):
+        self.ram[index] = value
+
+    def HLT(self):
+        self.running = False
+        self.pc += 1
 
     def load(self):
         """Load a program into memory."""
@@ -23,7 +38,7 @@ class CPU:
             0b00001000,
             0b01000111, # PRN R0
             0b00000000,
-            0b00000001, # HLT
+            0b00000001, # HLT, HALT
         ]
 
         for instruction in program:
@@ -35,7 +50,7 @@ class CPU:
         """ALU operations."""
 
         if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
+            self.registers[reg_a] += self.registers[reg_b]
         #elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
@@ -56,10 +71,23 @@ class CPU:
         ), end='')
 
         for i in range(8):
-            print(" %02X" % self.reg[i], end='')
+            print(" %02X" % self.registers[i], end='')
 
         print()
 
     def run(self):
         """Run the CPU."""
-        pass
+        while self.running:
+            instruction = self.ram_read(self.pc)
+            if instruction == 0b10000010: # LDI R0,8, store a value in a register
+                register_info = self.ram_read(self.pc + 1)
+                value = self.ram_read(self.pc + 2)
+                self.registers[register_info] = value
+                self.pc += 3
+            elif instruction == 0b01000111: # PRN R0
+                register_info = self.ram_read(self.pc + 1)
+                print(self.registers[register_info])
+                self.pc += 2
+            elif instruction == 0b00000001: # HLT, HALT
+                self.running = False
+
