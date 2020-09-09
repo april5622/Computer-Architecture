@@ -6,6 +6,8 @@ import sys
 HLT = 0b00000001
 MUL = 0b10100010
 LDI = 0b10000010
+PUSH = 0b01000101
+POP = 0b01000110
 
 class CPU:
     """Main CPU class."""
@@ -16,6 +18,7 @@ class CPU:
         self.registers = [0] * 8
         self.pc = 0
         self.running = True
+        self.sp = 7
 
     def ram_read(self, index):
         return self.ram[index]
@@ -116,7 +119,21 @@ class CPU:
                 register_info2 = self.ram_read(self.pc + 2)
                 self.registers[register_info1] *= self.registers[register_info2]
                 self.pc += 3
-                
+
+            elif instruction == 0b01000101: # PUSH
+                given_register = self.ram_read(self.pc + 1)
+                value_in_register = self.registers[given_register]
+                self.registers[self.sp] -= 1
+                self.ram[self.registers[self.sp]] = value_in_register
+                self.pc += 2
+
+            elif instruction == 0b01000110: # POP
+                given_register = self.ram_read(self.pc + 1)
+                value_in_ram = self.ram[self.registers[self.sp]]
+                self.registers[given_register] = value_in_ram
+                self.registers[self.sp] += 1
+                self.pc += 2
+
             else:
                 print(f"Unknown instruction {instruction}")
                 sys.exit(1)
