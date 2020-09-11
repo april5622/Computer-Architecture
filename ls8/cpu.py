@@ -4,10 +4,14 @@ import sys
 
 
 HLT = 0b00000001
+ADD = 0b10100000
 MUL = 0b10100010
 LDI = 0b10000010
+PRN = 0b01000111
 PUSH = 0b01000101
 POP = 0b01000110
+CALL = 0b01010000
+RET = 0b00010001
 
 class CPU:
     """Main CPU class."""
@@ -19,6 +23,16 @@ class CPU:
         self.pc = 0
         self.running = True
         self.sp = 7
+        self.brandtable = {}
+        self.brandtable[HLT] = self.handle_HLT
+        self.brandtable[LDI] = self.handle_LDI
+        self.brandtable[PRN] = self.handle_PRN
+        self.brandtable[ADD] = self.handle_ADD
+        self.brandtable[MUL] = self.handle_MUL
+        self.brandtable[PUSH] = self.handle_PUSH
+        self.brandtable[POP] = self.handle_POP
+        self.brandtable[CALL] = self.handle_CALL
+        self.brandtable[RET] = self.handle_RET
 
     def ram_read(self, index):
         return self.ram[index]
@@ -32,10 +46,6 @@ class CPU:
 
     def load(self):
         """Load a program into memory."""
-        # if len(sys.argv) != 2:
-        #     print("Usage: mult.ls8 filename")
-        #     sys.exit(1)
-
         address = 0
         try:
             with open(sys.argv[1]) as f:
@@ -87,56 +97,70 @@ class CPU:
 
         print()
 
+
+    def handle_HLT(self):
+        self.running = False
+        self.pc += 1
+    
+    def handle_LDI(self):
+        register_info = self.ram_read(self.pc + 1)
+        value = self.ram_read(self.pc + 2)
+        self.registers[register_info] = value
+        self.pc += 3
+
+    def handle_PRN(self):
+        register_info = self.ram_read(self.pc + 1)
+        print(self.registers[register_info])
+        self.pc += 2
+
+    def handle_ADD(self):
+        register_info1 = self.ram_read(self.pc + 1)
+        register_info2 = self.ram_read(self.pc + 2)
+        self.registers[register_info1] += self.registers[register_info2]
+        self.pc += 3
+
+    def handle_MUL(self):
+        register_info1 = self.ram_read(self.pc + 1)
+        register_info2 = self.ram_read(self.pc + 2)
+        self.registers[register_info1] *= self.registers[register_info2]
+        self.pc += 3
+
+    def handle_PUSH(self):
+        given_register = self.ram_read(self.pc + 1)
+        value_in_register = self.registers[given_register]
+        self.registers[self.sp] -= 1
+        self.ram[self.registers[self.sp]] = value_in_register
+        self.pc += 2
+
+    def handle_POP(self):
+        given_register = self.ram_read(self.pc + 1)
+        value_in_ram = self.ram[self.registers[self.sp]]
+        self.registers[given_register] = value_in_ram
+        self.registers[self.sp] += 1
+        self.pc += 2
+
+    def handle_CALL(self):
+        given_register = self.ram_read(self.pc + 1)
+        self.registers[self.sp] -= 1
+        self.ram[self.registers[self.sp]] = self.pc + 2
+        self.pc = self.registers[given_register]
+
+    def handle_RET(self):
+        self.pc = self.ram[self.registers[self.sp]]
+        self.registers[self.sp] += 1
+
+
     def run(self):
         """Run the CPU."""
-
         while self.running:
             instruction = self.ram_read(self.pc)
 
-            if instruction == 0b10000010: # LDI R0,8, store a value in a register
-                register_info = self.ram_read(self.pc + 1)
-                value = self.ram_read(self.pc + 2)
-                self.registers[register_info] = value
-                self.pc += 3
-
-            elif instruction == 0b01000111: # PRN R0, print register
-                register_info = self.ram_read(self.pc + 1)
-                print(self.registers[register_info])
-                self.pc += 2
-
-            elif instruction == 0b00000001: # HLT, HALT
-                self.running = False
-                self.pc += 1
-
-            elif instruction == 10100000: # ADD
-                register_info1 = self.ram_read(self.pc + 1)
-                register_info2 = self.ram_read(self.pc + 2)
-                self.registers[register_info1] += self.registers[register_info2]
-                self.pc += 3
-
-            elif instruction == 0b10100010: # MUL, multiply
-                register_info1 = self.ram_read(self.pc + 1)
-                register_info2 = self.ram_read(self.pc + 2)
-                self.registers[register_info1] *= self.registers[register_info2]
-                self.pc += 3
-
-            elif instruction == 0b01000101: # PUSH
-                given_register = self.ram_read(self.pc + 1)
-                value_in_register = self.registers[given_register]
-                self.registers[self.sp] -= 1
-                self.ram[self.registers[self.sp]] = value_in_register
-                self.pc += 2
-
-            elif instruction == 0b01000110: # POP
-                given_register = self.ram_read(self.pc + 1)
-                value_in_ram = self.ram[self.registers[self.sp]]
-                self.registers[given_register] = value_in_ram
-                self.registers[self.sp] += 1
-                self.pc += 2
+            if instruction in self.brandtable:
+                ir = self.brandtable[instruction]
+                ir()
 
             else:
-                print(f"Unknown instruction {instruction}")
+                print(f"Unknown instruction {bin(instruction)}")
                 sys.exit(1)
-
 
     
